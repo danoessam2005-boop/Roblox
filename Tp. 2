@@ -1,0 +1,176 @@
+-- Nany's Grapple Tp Script
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Variأ،veis
+local savedPosition = nil
+local anchorEnabled = false
+
+-- Criar GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NanyGrappleTp"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Frame principal
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 300, 0, 250)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Tأ­tulo
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+title.BorderSizePixel = 0
+title.Text = "Nany's Grapple Tpًںڑ€"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- Funأ§أ£o para criar botأµes
+local function createButton(name, text, position, callback)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 280, 0, 40)
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 16
+    button.Font = Enum.Font.GothamSemibold
+    button.AutoButtonColor = false
+    button.Parent = mainFrame
+    
+    -- Efeito hover
+    button.MouseEnter:Connect(function()
+        if button.Name ~= "AnchorButton" or not anchorEnabled then
+            button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end
+    end)
+    
+    button.MouseLeave:Connect(function()
+        if button.Name == "AnchorButton" and anchorEnabled then
+            button.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+        elseif button.Name ~= "AnchorButton" then
+            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+    end)
+    
+    button.MouseButton1Click:Connect(callback)
+    
+    return button
+end
+
+-- Botأ£o Save Pos
+local saveButton = createButton("SaveButton", "Save posًں“چ", UDim2.new(0, 10, 0, 50), function()
+    if humanoidRootPart then
+        savedPosition = humanoidRootPart.CFrame
+        saveButton.Text = "Save posًں“چ âœ“"
+        wait(0.5)
+        saveButton.Text = "Save posًں“چ"
+    end
+end)
+
+-- Botأ£o Tp
+local tpButton = createButton("TpButton", "Tpًںگ‰", UDim2.new(0, 10, 0, 100), function()
+    if not savedPosition then
+        tpButton.Text = "Salve uma posiأ§أ£o primeiro!"
+        wait(1)
+        tpButton.Text = "Tpًںگ‰"
+        return
+    end
+    
+    if humanoidRootPart then
+        -- 160 studs para baixo
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -160, 0)
+        wait(0.1)
+        
+        -- 200 studs para trأ،s
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, 0, 200)
+        wait(0.1)
+        
+        -- 100 studs para cima
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, 100, 0)
+        wait(0.1)
+        
+        -- 50 studs para frente
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, 0, -50)
+        wait(0.1)
+        
+        -- 10 studs para baixo
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.new(0, -10, 0)
+        wait(0.1)
+        
+        -- 10 studs acima da posiأ§أ£o salva
+        humanoidRootPart.CFrame = savedPosition * CFrame.new(0, 10, 0)
+    end
+end)
+
+-- Botأ£o Anchor
+local anchorButton = createButton("AnchorButton", "Anchor OFF", UDim2.new(0, 10, 0, 150), function()
+    anchorEnabled = not anchorEnabled
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = anchorEnabled
+        end
+    end
+    
+    if anchorEnabled then
+        anchorButton.Text = "Anchor ON"
+        anchorButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+    else
+        anchorButton.Text = "Anchor OFF"
+        anchorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    end
+end)
+
+-- Botأ£o Re:Update (Visual TP)
+local reUpdateButton = createButton("ReUpdateButton", "Re:Update", UDim2.new(0, 10, 0, 200), function()
+    if not humanoidRootPart then return end
+    
+    local realPos = humanoidRootPart.CFrame
+    local oldParent = humanoidRootPart.Parent
+    
+    -- Teleporte visual 1 stud para frente
+    humanoidRootPart.CFrame = realPos * CFrame.new(0, 0, -1)
+    humanoidRootPart.Parent = nil
+    
+    task.wait(0.05)
+    humanoidRootPart.Parent = oldParent
+    
+    -- Feedback visual
+    reUpdateButton.Text = "Re:Update âœ“"
+    wait(0.3)
+    reUpdateButton.Text = "Re:Update"
+end)
+
+-- Atualizar personagem quando respawnar
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    anchorEnabled = false
+    anchorButton.Text = "Anchor OFF"
+    anchorButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+end)
+
+print("Nany's Grapple Tp carregado com sucesso!")
