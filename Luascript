@@ -1,0 +1,74 @@
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+player.CharacterAdded:Connect(function(c)
+	character = c
+	hrp = character:WaitForChild("HumanoidRootPart")
+	humanoid = character:WaitForChild("Humanoid")
+end)
+
+-- Function to buy & equip/unequip Speed Coil
+local function buyAndEquipItem(itemName)
+	local success, err = pcall(function()
+		local remote = ReplicatedStorage
+			:WaitForChild("Packages")
+			:WaitForChild("Net")
+			:WaitForChild("RF/CoinsShopService/RequestBuy")
+
+		remote:InvokeServer(itemName)
+	end)
+
+	if success then
+		task.delay(0.5, function()
+			local backpack = player:WaitForChild("Backpack", 5)
+			local tool = backpack and backpack:FindFirstChild(itemName)
+
+			if tool then
+				local char = player.Character
+				if char then
+					tool.Parent = char
+					task.wait(0.25)
+					tool.Parent = backpack
+				end
+			else
+				warn("Tool not found in Backpack: " .. itemName)
+			end
+		end)
+	else
+		warn("Failed to buy item: " .. tostring(err))
+	end
+end
+
+local function buyAndEquipSpeedCoil()
+	buyAndEquipItem("Speed Coil") -- Change if item name is different
+
+	local backpack = player:WaitForChild("Backpack")
+	local tool
+
+	-- Wait until Speed Coil appears in backpack (max 10 seconds)
+	local start = tick()
+	repeat
+		tool = backpack:FindFirstChild("Speed Coil")
+		task.wait()
+	until tool or tick() - start > 10
+
+	if tool then
+		print("Speed Coil ready!")
+	else
+		warn("Speed Coil not found after waiting.")
+	end
+end
+
+-- Run function
+buyAndEquipSpeedCoil()
