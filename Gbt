@@ -1,0 +1,34 @@
+local ScreenGui = Instance.new("ScreenGui")
+local Button = Instance.new("TextButton")
+
+ScreenGui.Parent = game.CoreGui
+
+Button.Parent = ScreenGui
+Button.Size = UDim2.new(0, 150, 0, 50)
+Button.Position = UDim2.new(0.5, -75, 0.8, 0)
+Button.Text = "Power Hit 💥"
+
+Button.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+    local char = player.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = v.Character.HumanoidRootPart
+            local distance = (targetRoot.Position - root.Position).Magnitude
+            
+            if distance < 15 then
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = (targetRoot.Position - root.Position).Unit * 50 + Vector3.new(0, 30, 0)
+                bodyVelocity.MaxForce = Vector3.new(10000,10000,10000)
+                bodyVelocity.Parent = targetRoot
+
+                game.Debris:AddItem(bodyVelocity, 0.3)
+            end
+        end
+    end
+end)
