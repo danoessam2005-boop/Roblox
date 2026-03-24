@@ -1,0 +1,59 @@
+local ScreenGui = Instance.new("ScreenGui")
+local Button = Instance.new("TextButton")
+
+ScreenGui.Parent = game.CoreGui
+
+Button.Parent = ScreenGui
+Button.Size = UDim2.new(0, 160, 0, 50)
+Button.Position = UDim2.new(0.5, -80, 0.8, 0)
+Button.Text = "Ragdoll: OFF"
+
+local ragdolled = false
+
+Button.MouseButton1Click:Connect(function()
+    local player = game.Players.LocalPlayer
+    local char = player.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then return end
+
+    ragdolled = not ragdolled
+
+    if ragdolled then
+        Button.Text = "Ragdoll: ON"
+        
+        humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("Motor6D") then
+                local socket = Instance.new("BallSocketConstraint")
+                local a0 = Instance.new("Attachment")
+                local a1 = Instance.new("Attachment")
+
+                a0.Parent = part.Part0
+                a1.Parent = part.Part1
+
+                socket.Parent = part.Parent
+                socket.Attachment0 = a0
+                socket.Attachment1 = a1
+
+                part.Enabled = false
+            end
+        end
+        
+    else
+        Button.Text = "Ragdoll: OFF"
+        
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BallSocketConstraint") or v:IsA("Attachment") then
+                v:Destroy()
+            end
+            if v:IsA("Motor6D") then
+                v.Enabled = true
+            end
+        end
+
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end)
