@@ -1,0 +1,97 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local selected = nil
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "BrainrotAdmin"
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0,500,0,300)
+main.Position = UDim2.new(0.3,0,0.3,0)
+main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+main.Active = true
+main.Draggable = true
+
+-- Player list
+local list = Instance.new("ScrollingFrame", main)
+list.Size = UDim2.new(0.4,0,1,0)
+
+-- Commands panel
+local cmds = Instance.new("Frame", main)
+cmds.Size = UDim2.new(0.6,0,1,0)
+cmds.Position = UDim2.new(0.4,0,0,0)
+
+-- Refresh players
+local function refresh()
+	list:ClearAllChildren()
+
+	for i,v in pairs(Players:GetPlayers()) do
+		local b = Instance.new("TextButton", list)
+		b.Size = UDim2.new(1,0,0,30)
+		b.Position = UDim2.new(0,0,0,(i-1)*35)
+		b.Text = v.Name
+
+		b.MouseButton1Click:Connect(function()
+			selected = v
+		end)
+	end
+end
+
+Players.PlayerAdded:Connect(refresh)
+Players.PlayerRemoving:Connect(refresh)
+refresh()
+
+-- COMMANDS
+local function jail(t)
+	if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+		local p = Instance.new("Part")
+		p.Size = Vector3.new(10,10,10)
+		p.Position = t.Character.HumanoidRootPart.Position
+		p.Anchored = true
+		p.Parent = workspace
+	end
+end
+
+local function inverse(t)
+	if t.Character then
+		local h = t.Character:FindFirstChildOfClass("Humanoid")
+		if h then h.WalkSpeed = -16 end
+	end
+end
+
+local function rocket(t)
+	if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+		t.Character.HumanoidRootPart.Velocity = Vector3.new(0,200,0)
+	end
+end
+
+local function balloon(t)
+	if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+		local bf = Instance.new("BodyForce")
+		bf.Force = Vector3.new(0, workspace.Gravity * t.Character:GetMass() * 2, 0)
+		bf.Parent = t.Character.HumanoidRootPart
+	end
+end
+
+-- Create buttons
+local commands = {
+	{"Jail", jail},
+	{"Inverse", inverse},
+	{"Rocket", rocket},
+	{"Balloon", balloon}
+}
+
+for i,v in pairs(commands) do
+	local b = Instance.new("TextButton", cmds)
+	b.Size = UDim2.new(1,0,0,40)
+	b.Position = UDim2.new(0,0,0,(i-1)*45)
+	b.Text = v[1]
+
+	b.MouseButton1Click:Connect(function()
+		if selected then
+			v[2](selected)
+		end
+	end)
+end
