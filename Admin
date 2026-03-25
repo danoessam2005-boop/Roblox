@@ -1,0 +1,45 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local event = ReplicatedStorage:WaitForChild("AdminEvent")
+
+local admins = {
+    ["YourUsername"] = true
+}
+
+local function getPlayer(name)
+    return Players:FindFirstChild(name)
+end
+
+event.OnServerEvent:Connect(function(player, cmd, targetName)
+    if not admins[player.Name] then return end
+
+    local target = getPlayer(targetName)
+    if not target or not target.Character then return end
+
+    local char = target.Character
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if cmd == "jail" then
+        local part = Instance.new("Part")
+        part.Size = Vector3.new(10,10,10)
+        part.Position = hrp.Position
+        part.Anchored = true
+        part.Parent = workspace
+
+    elseif cmd == "inverse" then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = -16 end
+
+    elseif cmd == "rocket" then
+        local bv = Instance.new("BodyVelocity")
+        bv.Velocity = Vector3.new(0,200,0)
+        bv.MaxForce = Vector3.new(999999,999999,999999)
+        bv.Parent = hrp
+
+    elseif cmd == "balloon" then
+        local bf = Instance.new("BodyForce")
+        bf.Force = Vector3.new(0, workspace.Gravity * char:GetMass() * 1.5, 0)
+        bf.Parent = hrp
+    end
+end)
