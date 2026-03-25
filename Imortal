@@ -1,0 +1,44 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local function setup(char)
+	local hum = char:WaitForChild("Humanoid")
+
+	-- 🔄 INFINITE HEAL LOOP
+	task.spawn(function()
+		while char.Parent do
+			if hum.Health < hum.MaxHealth then
+				hum.Health = hum.MaxHealth
+			end
+			task.wait(0.05)
+		end
+	end)
+
+	-- 🚫 BLOCK DEATH
+	hum:GetPropertyChangedSignal("Health"):Connect(function()
+		if hum.Health <= 0 then
+			hum.Health = hum.MaxHealth
+		end
+	end)
+
+	-- 🛡️ REMOVE DAMAGE STATES
+	hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+
+	-- 💥 ANTI EXPLOSION / KNOCKBACK
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	hrp:GetPropertyChangedSignal("Velocity"):Connect(function()
+		if hrp.Velocity.Magnitude > 100 then
+			hrp.Velocity = Vector3.new(0,0,0)
+		end
+	end)
+end
+
+-- 🔁 APPLY ON SPAWN
+if lp.Character then
+	setup(lp.Character)
+end
+
+lp.CharacterAdded:Connect(setup)
