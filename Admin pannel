@@ -1,0 +1,165 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local selected = nil
+local targetMode = "Selected"
+
+-- MAIN GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "OP_Admin"
+
+-- TOGGLE BUTTON
+local toggle = Instance.new("TextButton", gui)
+toggle.Size = UDim2.new(0,120,0,40)
+toggle.Position = UDim2.new(0,20,0,200)
+toggle.Text = "OPEN ADMIN"
+toggle.BackgroundColor3 = Color3.fromRGB(0,170,255)
+toggle.Active = true
+toggle.Draggable = true
+
+-- MAIN FRAME
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0,550,0,350)
+main.Position = UDim2.new(0.3,0,0.3,0)
+main.BackgroundColor3 = Color3.fromRGB(15,15,15)
+main.Visible = false
+main.Active = true
+main.Draggable = true
+
+-- TOGGLE LOGIC
+toggle.MouseButton1Click:Connect(function()
+	main.Visible = not main.Visible
+	if main.Visible then
+		toggle.Text = "CLOSE ADMIN"
+	else
+		toggle.Text = "OPEN ADMIN"
+	end
+end)
+
+-- PLAYER LIST
+local list = Instance.new("ScrollingFrame", main)
+list.Size = UDim2.new(0.35,0,1,0)
+
+-- COMMAND PANEL
+local cmds = Instance.new("Frame", main)
+cmds.Size = UDim2.new(0.65,0,1,0)
+cmds.Position = UDim2.new(0.35,0,0,0)
+
+-- TARGET MODES
+local modes = {"Selected","Me","All"}
+for i,v in pairs(modes) do
+	local b = Instance.new("TextButton", cmds)
+	b.Size = UDim2.new(0.3,0,0,30)
+	b.Position = UDim2.new((i-1)*0.33,0,0,0)
+	b.Text = v
+
+	b.MouseButton1Click:Connect(function()
+		targetMode = v
+	end)
+end
+
+-- REFRESH PLAYERS
+local function refresh()
+	list:ClearAllChildren()
+	for i,v in pairs(Players:GetPlayers()) do
+		local b = Instance.new("TextButton", list)
+		b.Size = UDim2.new(1,0,0,30)
+		b.Position = UDim2.new(0,0,0,(i-1)*35)
+		b.Text = v.Name
+
+		b.MouseButton1Click:Connect(function()
+			selected = v
+		end)
+	end
+end
+
+Players.PlayerAdded:Connect(refresh)
+Players.PlayerRemoving:Connect(refresh)
+refresh()
+
+-- TARGET FUNCTION
+local function getTargets()
+	if targetMode == "Me" then
+		return {lp}
+	elseif targetMode == "All" then
+		return Players:GetPlayers()
+	elseif selected then
+		return {selected}
+	end
+	return {}
+end
+
+-- COMMANDS
+local function jail(t)
+	if t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+		local p = Instance.new("Part")
+		p.Size = Vector3.new(10,10,10)
+		p.Position = t.Character.HumanoidRootPart.Position
+		p.Anchored = true
+		p.Parent = workspace
+	end
+end
+
+local function inverse(t)
+	local h = t.Character and t.Character:FindFirstChildOfClass("Humanoid")
+	if h then h.WalkSpeed = -50 end
+end
+
+local function rocket(t)
+	local hrp = t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then hrp.Velocity = Vector3.new(0,300,0) end
+end
+
+local function balloon(t)
+	local hrp = t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		local bf = Instance.new("BodyForce")
+		bf.Force = Vector3.new(0, workspace.Gravity * t.Character:GetMass() * 3, 0)
+		bf.Parent = hrp
+	end
+end
+
+local function kill(t)
+	local h = t.Character and t.Character:FindFirstChildOfClass("Humanoid")
+	if h then h.Health = 0 end
+end
+
+local function fling(t)
+	local hrp = t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.Velocity = Vector3.new(math.random(-500,500),500,math.random(-500,500))
+	end
+end
+
+local function spin(t)
+	task.spawn(function()
+		while t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") do
+			t.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(60), 0)
+			task.wait()
+		end
+	end)
+end
+
+-- BUTTON MAKER
+local function makeBtn(name, func, posY)
+	local b = Instance.new("TextButton", cmds)
+	b.Size = UDim2.new(1,0,0,35)
+	b.Position = UDim2.new(0,0,0,posY)
+	b.Text = name
+
+	b.MouseButton1Click:Connect(function()
+		for _,t in pairs(getTargets()) do
+			func(t)
+		end
+	end)
+end
+
+-- CREATE BUTTONS
+local y = 40
+makeBtn("Jail", jail, y) y+=40
+makeBtn("Inverse", inverse, y) y+=40
+makeBtn("Rocket", rocket, y) y+=40
+makeBtn("Balloon", balloon, y) y+=40
+makeBtn("Kill", kill, y) y+=40
+makeBtn("Fling", fling, y) y+=40
+makeBtn("Spin Loop", spin, y)
